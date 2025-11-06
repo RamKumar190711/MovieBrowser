@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
@@ -28,22 +29,46 @@ import com.toqsoft.moviebrowser.presentation.navigation.Screen
 import com.toqsoft.moviebrowser.presentation.viewmodel.MovieViewModel
 
 @Composable
-fun MovieListScreen(navController: NavController, viewModel: MovieViewModel = hiltViewModel()) {
+fun MovieListScreen(
+    navController: NavController,
+    viewModel: MovieViewModel = hiltViewModel()
+) {
     var query by remember { mutableStateOf("") }
+    var selectedLanguageName by remember { mutableStateOf("All") }
+
     val searchResults by viewModel.searchResults.collectAsState()
-    val movies = viewModel.movies.collectAsLazyPagingItems()
     val favorites by viewModel.favorites.collectAsState()
+    val movies = viewModel.movies.collectAsLazyPagingItems()
+
+    val languages = listOf(
+        "All" to "",
+        "English" to "en",
+        "Tamil" to "ta",
+        "Hindi" to "hi",
+        "Spanish" to "es",
+        "French" to "fr",
+        "Japanese" to "ja",
+        "Korean" to "ko",
+        "Chinese" to "zh"
+    )
 
     Column {
-        SearchBar(
-            query = query,
-            onQueryChanged = { newQuery ->
-                query = newQuery
-                if (newQuery.isNotEmpty()) {
-                    viewModel.search(newQuery)
-                }
+        LanguageDropdown(selectedLanguageName) { languageCode, displayName ->
+            selectedLanguageName = displayName
+            viewModel.selectLanguage(languageCode)
+            if (query.isNotEmpty()) {
+                viewModel.search(query, languageCode)
             }
-        )
+        }
+
+
+        SearchBar(query = query, onQueryChanged = { newQuery ->
+            query = newQuery
+            val code = languages.find { it.first == selectedLanguageName }?.second
+            if (newQuery.isNotEmpty()) {
+                viewModel.search(newQuery, code)
+            }
+        })
 
         if (query.isEmpty()) {
             LazyVerticalGrid(columns = GridCells.Fixed(2)) {
@@ -73,6 +98,44 @@ fun MovieListScreen(navController: NavController, viewModel: MovieViewModel = hi
         }
     }
 }
+
+@Composable
+fun LanguageDropdown(
+    selectedLanguageName: String,
+    onLanguageSelected: (languageCode: String, displayName: String) -> Unit
+) {
+    val languages = listOf(
+        "All" to "",
+        "English" to "en",
+        "Tamil" to "ta",
+        "Hindi" to "hi",
+        "Spanish" to "es",
+        "French" to "fr",
+        "Japanese" to "ja",
+        "Korean" to "ko",
+        "Chinese" to "zh"
+    )
+
+    var expanded by remember { mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
+            Text(text = selectedLanguageName)
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, modifier = Modifier.fillMaxWidth()) {
+            languages.forEach { (name, code) ->
+                DropdownMenuItem(
+                    text = { Text(name) },
+                    onClick = {
+                        onLanguageSelected(code, name)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
 
 @Composable
 fun MovieCard(
@@ -120,7 +183,6 @@ fun MovieCard(
         }
     }
 }
-
 @Composable
 fun SearchBar(query: String, onQueryChanged: (String) -> Unit, modifier: Modifier = Modifier) {
     OutlinedTextField(
@@ -144,8 +206,6 @@ fun SearchBar(query: String, onQueryChanged: (String) -> Unit, modifier: Modifie
             unfocusedBorderColor = Color.Transparent
         ),
         shape = RoundedCornerShape(24.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
     )
 }
