@@ -7,7 +7,9 @@ import com.toqsoft.moviebrowser.data.model.Movie
 import com.toqsoft.moviebrowser.domain.repository.MovieRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -21,6 +23,14 @@ class MovieViewModel @Inject constructor(
     private val _searchResults = MutableStateFlow<List<Movie>>(emptyList())
     val searchResults = _searchResults.asStateFlow()
 
+    private val _favorites = MutableStateFlow<Set<Int>>(emptySet())
+    val favorites: StateFlow<Set<Int>> = _favorites
+
+    fun toggleFavorite(movie: Movie) {
+        _favorites.update { current ->
+            if (current.contains(movie.id)) current - movie.id else current + movie.id
+        }
+    }
     fun search(query: String) {
         viewModelScope.launch {
             _searchResults.value = repository.searchMovies(query)
